@@ -10,19 +10,22 @@ requires-python = ">=3.11"
 dependencies = [
     "fastapi",
     "uvicorn",
-    "sqlalchemy",
+    "sqlalchemy[asyncio]",
     "alembic",
     "pydantic",
     "boto3",
     "opensearch-py",
     "celery",
     "redis",
+    "asyncpg",
+    "pyjwt",
     "python-multipart",  # required by FastAPI for multipart uploads
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest",
+    "pytest-asyncio",
     "httpx",
     "ruff",
     "mypy",
@@ -35,6 +38,9 @@ include = ["app*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
 
 [tool.ruff]
 line-length = 100

@@ -19,13 +19,14 @@ paths:
             schema:
               $ref: '#/components/schemas/AssetUpload'
       responses:
-        '201':
-          description: Asset created
+        '200':
+          description: Asset created (or the existing asset when the idempotency key was already used within 24h)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Asset' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
+        '413': { $ref: '#/components/responses/Error' }
         '422': { $ref: '#/components/responses/Error' }
     get:
       operationId: searchAssets
@@ -48,6 +49,7 @@ paths:
               schema: { $ref: '#/components/schemas/AssetPage' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
   /assets/{id}:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
@@ -91,9 +93,9 @@ components:
     bearerAuth: { type: http, scheme: bearer }
   parameters:
     IdempotencyKey:
-      name: Idempotency-Key
+      name: X-Idempotency-Key
       in: header
-      required: false
+      required: true
       schema: { type: string }
   responses:
     Error:
@@ -104,7 +106,7 @@ components:
   schemas:
     AssetStatus:
       type: string
-      enum: [pending, approved]
+      enum: [pending, active, deleted]
     AssetUpload:
       type: object
       required: [file]
@@ -115,9 +117,10 @@ components:
         tags:
           type: array
           items: { type: string }
+        rights_expiry: { type: string, format: date-time }
     Asset:
       type: object
-      required: [id, filename, content_type, size_bytes, status, tags, created_at]
+      required: [id, filename, content_type, size_bytes, status, tags, owner_id, created_at]
       properties:
         id: { type: string, format: uuid }
         filename: { type: string }
@@ -129,15 +132,18 @@ components:
           type: array
           items: { type: string }
         status: { $ref: '#/components/schemas/AssetStatus' }
+        owner_id: { type: string }
+        rights_expiry: { type: string, format: date-time, nullable: true }
         created_at: { type: string, format: date-time }
     AssetPage:
       type: object
-      required: [items, total, page, page_size]
+      required: [items, total, total_hits, page, page_size]
       properties:
         items:
           type: array
           items: { $ref: '#/components/schemas/Asset' }
         total: { type: integer }
+        total_hits: { type: integer }
         page: { type: integer }
         page_size: { type: integer }
     ErrorResponse:
