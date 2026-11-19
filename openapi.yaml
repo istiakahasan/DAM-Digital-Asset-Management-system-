@@ -1,0 +1,147 @@
+openapi: 3.0.3
+info:
+  title: DAM API
+  version: 0.1.0
+  description: Digital Asset Management service contract.
+security:
+  - bearerAuth: []
+paths:
+  /assets:
+    post:
+      operationId: createAsset
+      summary: Upload an asset with metadata
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AssetUpload'
+      responses:
+        '201':
+          description: Asset created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Asset' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+    get:
+      operationId: searchAssets
+      summary: Search assets
+      parameters:
+        - { name: q, in: query, required: false, schema: { type: string } }
+        - name: tags
+          in: query
+          required: false
+          style: form
+          explode: true
+          schema: { type: array, items: { type: string } }
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: page_size, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200':
+          description: Page of assets
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AssetPage' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+  /assets/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getAsset
+      summary: Get an asset
+      responses:
+        '200':
+          description: The asset
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Asset' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    delete:
+      operationId: deleteAsset
+      summary: Delete an asset
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /assets/{id}/approve:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: approveAsset
+      summary: Approve an asset (admin only)
+      responses:
+        '200':
+          description: Approved asset
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Asset' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema: { type: string }
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+  schemas:
+    AssetStatus:
+      type: string
+      enum: [pending, approved]
+    AssetUpload:
+      type: object
+      required: [file]
+      properties:
+        file: { type: string, format: binary }
+        title: { type: string }
+        description: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+    Asset:
+      type: object
+      required: [id, filename, content_type, size_bytes, status, tags, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        filename: { type: string }
+        content_type: { type: string }
+        size_bytes: { type: integer }
+        title: { type: string, nullable: true }
+        description: { type: string, nullable: true }
+        tags:
+          type: array
+          items: { type: string }
+        status: { $ref: '#/components/schemas/AssetStatus' }
+        created_at: { type: string, format: date-time }
+    AssetPage:
+      type: object
+      required: [items, total, page, page_size]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Asset' }
+        total: { type: integer }
+        page: { type: integer }
+        page_size: { type: integer }
+    ErrorResponse:
+      type: object
+      required: [detail]
+      properties:
+        detail: { type: string }
